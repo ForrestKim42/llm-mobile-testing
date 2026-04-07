@@ -117,6 +117,34 @@ This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/ll
 - **React Native / Flutter support** — automatic fallback when standard UI dumping fails on animated apps. Bundled and auto-pushed to device on first use.
 - **Keyboard auto-dismiss** — typing automatically closes the keyboard afterward so subsequent taps hit the right coordinates.
 
+## Transition table
+
+ROUTES.md tells you what's on each screen. A **transition table** tells you what happens when you act — `screen + action → next screen`. This is what makes fully batched, zero-dump flows possible.
+
+```markdown
+# TRANSITIONS.md
+
+## Home
+- tap TEXT:Bridge → Bridge
+- tap TEXT:Swap → Swap
+- tap TEXT:Settings → Settings
+
+## Bridge
+- tap INPUT:0 + type {amount} → Bridge (with quote)
+- tap BUTTON:Confirm → BiometricPrompt
+- tap BUTTON:Polygon → ChainSelector
+
+## BiometricPrompt
+- tap BUTTON:Cancel → PasswordSheet
+
+## PasswordSheet
+- tap INPUT:Unlabeled + type {password} + tap BUTTON:Confirm@2 → Bridge (tx submitted)
+```
+
+With this, an entire multi-screen flow can be pre-planned as a single batch — no intermediate UI dumps needed. The stable `TYPE:Label` IDs make this work: `BUTTON:Confirm` is always `BUTTON:Confirm` regardless of session or screen resolution.
+
+Build it naturally during Phase 1 exploration. Every time `mobile_do` returns after an action, the response shows the new screen — that's a transition. Record it. After exploration, the transition table is complete and flows become fully deterministic.
+
 ## Tips and tricks
 
 **Biometric / FLAG_SECURE screens** capture as black. The UI dump still works — it reads the accessibility tree regardless. Cancel the biometric prompt to reach the password fallback.
@@ -148,6 +176,7 @@ For reference, here's what a completed exploration looks like:
     002_home.png
     ...
   ROUTES.md
+  TRANSITIONS.md
   user-flows/
     01-onboarding.md
     02-send.md
