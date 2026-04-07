@@ -8,7 +8,7 @@ This is an idea file. Share it with your LLM agent and explore together. The spe
 
 Most app research is manual. A person taps through an app, takes screenshots when something looks interesting, and writes notes afterward. This produces partial, biased coverage — you see what catches your eye, miss what doesn't, and have no way to know what you missed.
 
-The idea here is different. An LLM agent connected to a phone via ADB can see the screen (screenshot), understand what's on it (UI dump), and interact with it (tap, type, scroll, navigate). This means the agent can treat the app as a **graph** — each screen is a node, each tappable element is an edge — and perform a depth-first search. Systematically. Every screen, every dropdown, every toggle, every scroll position. Nothing skipped, nothing assumed.
+The idea here is different. An LLM agent connected to a phone can see the screen (screenshot), understand what's on it (UI dump), and interact with it (tap, type, scroll, navigate). This means the agent can treat the app as a **graph** — each screen is a node, each tappable element is an edge — and perform a depth-first search. Systematically. Every screen, every dropdown, every toggle, every scroll position. Nothing skipped, nothing assumed.
 
 The output is not a set of scattered screenshots. It's a **route map** — a structured, complete catalog of every screen in the app, with evidence (screenshots) and context (descriptions). Like a wiki for the app's UI. Once you have this, user flows, competitive analysis, gap analysis, and UX audits become trivial — you're working from complete data instead of memory and impressions.
 
@@ -109,15 +109,7 @@ adb devices
 }
 ```
 
-This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/llm-friendly-ui-analysis) of [mobile-mcp](https://github.com/mobile-next/mobile-mcp) that adds:
-
-- **LLM-optimized UI analysis** — categorized elements (texts/buttons/inputs/scrollables) with center coordinates, password field detection, and element counts
-- **React Native / animated app support** — automatic DEX hierarchy dumper fallback when `uiautomator` fails due to idle detection issues. The DEX is bundled and auto-pushed to the device on first use. No manual setup needed.
-- **Batch taps** — `mobile_batch_taps` executes multiple taps in a single MCP call with configurable delays, avoiding the round-trip overhead of individual tap calls
-
-Supports **both iOS and Android** — real devices and simulators. The DEX fallback is Android-only (iOS uses WebDriverAgent which doesn't have this issue).
-
-Apps built with React Native, Flutter, or any framework with continuous animations work out of the box. The MCP detects when the standard approach fails and automatically falls back to an alternative method. No configuration required.
+This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/llm-friendly-ui-analysis) of [mobile-mcp](https://github.com/mobile-next/mobile-mcp) with LLM-optimized UI analysis, batch action support, and automatic fallback for apps that break standard UI dumping (React Native, Flutter, etc.). Supports **both iOS and Android** — real devices and simulators. No additional setup beyond the config above.
 
 ## Action batching
 
@@ -131,11 +123,9 @@ Each action normally costs a full cycle: action → wait → UI dump → LLM dec
 
 **Keyboard handling.** Never use BACK to dismiss a keyboard — it may navigate away. Tap an empty area instead.
 
-**Biometric prompts** are FLAG_SECURE (black screenshot). Detect via UI dump, cancel to reach the password fallback.
-
 ## Tips and tricks
 
-**FLAG_SECURE screens** (biometric prompts, banking screens) capture as black. Use the UI dump instead — it reads the accessibility tree regardless.
+**Biometric / FLAG_SECURE screens** capture as black. The UI dump still works — it reads the accessibility tree regardless. Cancel the biometric prompt to reach the password fallback.
 
 **Session breaks** are inevitable — context limits, app crashes, device timeouts. ROUTES.md's checklist is your resume point. Read it, find the unchecked items, continue from the last screenshot number.
 
