@@ -117,22 +117,6 @@ This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/ll
 
 Supports **both iOS and Android** — real devices and simulators. The DEX fallback is Android-only (iOS uses WebDriverAgent which doesn't have this issue).
 
-### Available tools
-
-| Tool | Purpose |
-|------|---------|
-| `mobile_list_available_devices` | Find connected devices |
-| `mobile_list_elements_on_screen` | Read UI tree — texts, buttons, inputs, scrollables with coordinates |
-| `mobile_take_screenshot` | Capture screen as image |
-| `mobile_click_on_screen_at_coordinates` | Tap at (x, y) |
-| `mobile_batch_taps` | Multiple taps in one call — pass JSON array of `{x, y, delayAfter?}` |
-| `mobile_type_keys` | Type text into focused field |
-| `mobile_press_button` | BACK, HOME, ENTER, VOLUME_UP/DOWN |
-| `mobile_swipe_on_screen` | Swipe in a direction, optionally from specific coordinates |
-| `mobile_launch_app` | Open an app by package name |
-| `mobile_terminate_app` | Force stop an app |
-| `mobile_list_apps` | List installed apps |
-
 ### React Native / WebView apps
 
 Standard `uiautomator dump` fails on React Native apps because JS-driven animations fire accessibility events every ~100ms, preventing the idle state from resolving. This fork handles it automatically:
