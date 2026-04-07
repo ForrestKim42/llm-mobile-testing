@@ -38,9 +38,9 @@ All four are built by the agent. You direct; the agent does the work.
 
 ## Operations
 
-**Capture.** At each screen: read the UI elements, take a screenshot, record what you see. One row in ROUTES.md per screenshot. Number sequentially. Name descriptively. Move on.
+**Capture.** At each screen: read the UI elements, take a screenshot, record what you see. One row in ROUTES.md per screenshot. Number sequentially. Name descriptively.
 
-**Navigate.** Treat the app as a graph. DFS: for each tappable element on the current screen, tap it. If it's a new screen, record the transition and recurse. If it's a modal or bottom sheet, capture and dismiss. Press BACK to return. When all elements are explored, the node is done. Maintain a checklist — mark what's explored, note what isn't.
+**Navigate.** Treat the app as a graph. DFS: for each tappable element on the current screen, tap it. If it's a new screen, record the transition and recurse. If it's a modal or bottom sheet, capture and dismiss. Press BACK to return. Batch multiple screens in one call — tap into a screen, screenshot, back out, tap the next, screenshot, back out. One MCP call can cover an entire level of the tree.
 
 **Record transitions.** Every action that changes the screen is a transition. The response from `mobile_do` always shows the new screen — log it as `screen + action → next screen` in TRANSITIONS.md.
 
@@ -115,12 +115,13 @@ adb devices
 
 This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/llm-friendly-ui-analysis) of [mobile-mcp](https://github.com/mobile-next/mobile-mcp). Supports **both iOS and Android** — real devices and simulators. No additional setup beyond the config above. Key features:
 
-- **Single tool (`mobile_do`)** — reads screen, performs actions, and returns updated screen in one call. No separate list/tap/type tools to juggle.
-- **Stable element IDs** — every element gets a `TYPE:Label` ID (e.g. `BUTTON:Confirm`, `INPUT:amount`). Duplicates auto-suffixed (`BUTTON:Confirm@2`). IDs are resolved at tap time via fresh UI dump, so keyboard/modal coordinate shifts are handled automatically.
-- **Action batching** — pass an array of actions to execute in sequence: `["tap TEXT:Bridge", "wait 2000", "tap INPUT:0", "type 5", "wait 5000", "tap BUTTON:Confirm"]`. The response includes the final screen state.
+- **Single tool (`mobile_do`)** — reads screen, performs actions, and returns updated screen in one call. No separate tools to juggle.
+- **Stable element IDs** — every element gets a `TYPE:Label` ID (e.g. `BUTTON:Confirm`, `INPUT:amount`). Duplicates auto-suffixed (`BUTTON:Confirm@2`). Tap resolves IDs via fresh UI dump, so keyboard/modal coordinate shifts are handled automatically.
+- **Actions** — `tap BUTTON:Confirm`, `type hello`, `press BACK`, `swipe up`, `dismiss` (close bottom sheet), `screenshot /path/to/file.png`, `wait 1000`. Pass a single string or a JSON array for batching.
+- **Batch DFS** — combine navigation, screenshots, and backtracking in one call: `["tap TEXT:Send", "wait 1000", "screenshot /path/021.png", "press BACK", "tap TEXT:Bridge", "wait 1000", "screenshot /path/022.png", "press BACK"]`. One MCP call captures multiple screens.
 - **React Native / Flutter support** — automatic fallback when standard UI dumping fails on animated apps. Bundled and auto-pushed to device on first use.
-- **Keyboard auto-dismiss** — typing automatically closes the keyboard afterward so subsequent taps hit the right coordinates.
-- **Bottom sheet dismiss** — `dismiss` action drags the sheet handle downward to close WebView-based bottom sheets that ignore BACK.
+- **Keyboard auto-dismiss** — typing automatically closes the keyboard so subsequent taps hit the right coordinates.
+- **Bottom sheet dismiss** — `dismiss` drags the sheet handle down to close WebView-based bottom sheets that ignore BACK.
 
 ## Transition table
 
