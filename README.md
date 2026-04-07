@@ -109,19 +109,13 @@ adb devices
 }
 ```
 
-This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/llm-friendly-ui-analysis) of [mobile-mcp](https://github.com/mobile-next/mobile-mcp) with LLM-optimized UI analysis, batch action support, and automatic fallback for apps that break standard UI dumping (React Native, Flutter, etc.). Supports **both iOS and Android** — real devices and simulators. No additional setup beyond the config above.
+This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/llm-friendly-ui-analysis) of [mobile-mcp](https://github.com/mobile-next/mobile-mcp). Supports **both iOS and Android** — real devices and simulators. No additional setup beyond the config above. Key features:
 
-## Action batching
-
-Once you know a flow — the screens, the coordinates, the transitions — you don't need to check the UI between every action. Batch multiple actions together, skipping the intermediate UI dump cycles.
-
-Each action normally costs a full cycle: action → wait → UI dump → LLM decision → next action. That's 5–10 seconds per step. Batching skips the middle steps for predictable sequences.
-
-**Safe to batch.** Same-screen actions — tapping multiple fields, entering text, toggling switches. The layout doesn't change, so coordinates stay valid.
-
-**Not safe to batch.** Anything that changes the screen layout unpredictably — modals, keyboards appearing, bottom sheets, biometric prompts. These shift coordinates. Insert a UI dump at these transition points to re-read the layout, then continue.
-
-**Keyboard handling.** Never use BACK to dismiss a keyboard — it may navigate away. Tap an empty area instead.
+- **Single tool (`mobile_do`)** — reads screen, performs actions, and returns updated screen in one call. No separate list/tap/type tools to juggle.
+- **Stable element IDs** — every element gets a `TYPE:Label` ID (e.g. `BUTTON:Confirm`, `INPUT:amount`). Duplicates auto-suffixed (`BUTTON:Confirm@2`). IDs are resolved at tap time via fresh UI dump, so keyboard/modal coordinate shifts are handled automatically.
+- **Action batching** — pass an array of actions to execute in sequence: `["tap TEXT:Bridge", "wait 2000", "tap INPUT:0", "type 5", "wait 5000", "tap BUTTON:Confirm"]`. The response includes the final screen state.
+- **React Native / Flutter support** — automatic fallback when standard UI dumping fails on animated apps. Bundled and auto-pushed to device on first use.
+- **Keyboard auto-dismiss** — typing automatically closes the keyboard afterward so subsequent taps hit the right coordinates.
 
 ## Tips and tricks
 
