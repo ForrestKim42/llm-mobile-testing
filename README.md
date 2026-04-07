@@ -1,6 +1,6 @@
 # Mobile App Exploration
 
-A pattern for systematically exploring any Android app using an LLM agent with physical device access — producing a complete map of every screen, every interaction, and every user flow.
+A pattern for systematically exploring any mobile app using an LLM agent with physical device access — producing a complete map of every screen, every interaction, and every user flow.
 
 This is an idea file. Share it with your LLM agent and explore together. The specifics will depend on your app, your device, and your goals.
 
@@ -8,7 +8,7 @@ This is an idea file. Share it with your LLM agent and explore together. The spe
 
 Most app research is manual. A person taps through an app, takes screenshots when something looks interesting, and writes notes afterward. This produces partial, biased coverage — you see what catches your eye, miss what doesn't, and have no way to know what you missed.
 
-The idea here is different. An LLM agent connected to a phone via ADB can see the screen (screenshot), understand what's on it (UI dump), and interact with it (tap, type, scroll, navigate). This means the agent can treat the app as a **graph** — each screen is a node, each tappable element is an edge — and perform a depth-first search. Systematically. Every screen, every dropdown, every toggle, every scroll position. Nothing skipped, nothing assumed.
+The idea here is different. An LLM agent connected to a phone can see the screen (screenshot), understand what's on it (UI dump), and interact with it (tap, type, scroll, navigate). This means the agent can treat the app as a **graph** — each screen is a node, each tappable element is an edge — and perform a depth-first search. Systematically. Every screen, every dropdown, every toggle, every scroll position. Nothing skipped, nothing assumed.
 
 The output is not a set of scattered screenshots. It's a **route map** — a structured, complete catalog of every screen in the app, with evidence (screenshots) and context (descriptions). Like a wiki for the app's UI. Once you have this, user flows, competitive analysis, gap analysis, and UX audits become trivial — you're working from complete data instead of memory and impressions.
 
@@ -98,7 +98,7 @@ You need a phone and an MCP server that lets the agent see and touch it.
 # Verify connection
 adb devices
 
-# MCP server — add to your agent's MCP config
+# MCP server — add to your agent's MCP config (.mcp.json)
 {
   "mcpServers": {
     "mobile": {
@@ -109,57 +109,23 @@ adb devices
 }
 ```
 
-This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/llm-friendly-ui-analysis) of [mobile-mcp](https://github.com/mobile-next/mobile-mcp) that adds LLM-optimized UI analysis — categorized elements (texts/buttons/inputs/scrollables) with center coordinates, password field detection, and element counts. Supports **both iOS and Android** — real devices and simulators.
-
-This gives the agent: `mobile_take_screenshot`, `mobile_list_elements_on_screen`, `mobile_click_on_screen_at_coordinates`, `mobile_type_keys`, `mobile_press_button`, `mobile_swipe_on_screen`, `mobile_launch_app`. That's all you need.
+This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/llm-friendly-ui-analysis) of [mobile-mcp](https://github.com/mobile-next/mobile-mcp) with LLM-optimized UI analysis, batch action support, and automatic fallback for apps that break standard UI dumping (React Native, Flutter, etc.). Supports **both iOS and Android** — real devices and simulators. No additional setup beyond the config above.
 
 ## Action batching
 
-Once you know a flow — the screens, the coordinates, the transitions — you don't need to check the UI between every tap. You can batch multiple actions into a single shell command and skip the intermediate screenshot/dump cycles entirely.
+Once you know a flow — the screens, the coordinates, the transitions — you don't need to check the UI between every action. Batch multiple actions together, skipping the intermediate UI dump cycles.
 
-**Why it matters.** Each action normally costs a full cycle: tap → wait → screenshot → UI dump → LLM decision → next tap. That's 5–10 seconds per step. A 10-step flow takes a minute. With batching, the same 10 steps execute in under 5 seconds.
+Each action normally costs a full cycle: action → wait → UI dump → LLM decision → next action. That's 5–10 seconds per step. Batching skips the middle steps for predictable sequences.
 
-**How it works.** Chain ADB commands with `&&` and `sleep` for timing:
+**Safe to batch.** Same-screen actions — tapping multiple fields, entering text, toggling switches. The layout doesn't change, so coordinates stay valid.
 
-```bash
-# Example: Enter amount, dismiss keyboard, wait for quote, confirm
-adb shell input tap 695 520 &&        # tap amount field
-adb shell input text "10" &&          # type amount
-sleep 0.3 &&
-adb shell input tap 340 850 &&        # tap empty area (dismiss keyboard)
-sleep 3 &&                            # wait for quote to load
-adb shell input tap 541 2316          # tap Confirm
-```
+**Not safe to batch.** Anything that changes the screen layout unpredictably — modals, keyboards appearing, bottom sheets, biometric prompts. These shift coordinates. Insert a UI dump at these transition points to re-read the layout, then continue.
 
-**When to batch.** Same-screen actions are safe to batch — field edits, toggles, typing. Cross-screen transitions need timing (sleep) but work reliably when you know the target coordinates.
-
-**When NOT to batch.** Screen transitions where the UI layout changes unpredictably:
-- **Bottom sheets / modals** — coordinates shift when they appear or the keyboard opens
-- **Biometric prompts** — FLAG_SECURE blocks screenshots; detect via UI dump, not visual
-- **Token/chain selection** — selecting a token may auto-open another selector or reset fields
-- **Keyboard appearance** — pushes all bottom-sheet buttons to different y-coordinates
-
-**Conditional batching.** The practical approach is hybrid: batch the predictable parts, insert a state check (UI dump) at transition points, then batch again.
-
-```
-Phase A (batch): navigate to screen, fill fields, dismiss keyboard
-Phase B (check): UI dump → verify expected state (button enabled? correct screen?)
-Phase C (batch): confirm, handle auth, complete flow
-```
-
-**Keyboard handling.** Never use BACK to dismiss a keyboard — if the keyboard is already down, BACK navigates away from the screen. Instead, tap an empty area of the screen. This is reliable regardless of keyboard state.
-
-**Biometric → Password flow.** Most apps show biometric auth first, with a password fallback. The flow is: Confirm tap → biometric prompt (FLAG_SECURE, black screenshot) → Cancel → password sheet appears → type password → Confirm. The biometric prompt takes 1–2 seconds to appear, and the password sheet coordinates differ from the main screen because of the bottom sheet offset.
-
-**Coordinates from ROUTES.md.** The route map from Phase 1 contains the raw material for batching. Each screenshot has a corresponding UI dump with exact element coordinates. A transition table mapping `screen + action → next screen` would make batching fully deterministic. This is a natural Phase 2 artifact.
+**Keyboard handling.** Never use BACK to dismiss a keyboard — it may navigate away. Tap an empty area instead.
 
 ## Tips and tricks
 
-**Foldable devices** (Galaxy Z Fold, etc.) have dual displays. `screencap` without a display ID outputs garbage. Fix: `adb shell dumpsys SurfaceFlinger --display-id` to find IDs, then patch the MCP handler to add `-d <display_id>`. Restart the MCP server after patching — Node loads code at startup.
-
-**FLAG_SECURE screens** (biometric prompts, banking screens) capture as black. Use `capture_ui_dump` instead — it reads the accessibility tree regardless. Document what the dump reveals.
-
-**Scroll reliability** varies by device. `input_scroll` may be too gentle. Fallback: `adb shell input swipe 540 2000 540 800 500`. Adjust coordinates for your screen resolution.
+**Biometric / FLAG_SECURE screens** capture as black. The UI dump still works — it reads the accessibility tree regardless. Cancel the biometric prompt to reach the password fallback.
 
 **Session breaks** are inevitable — context limits, app crashes, device timeouts. ROUTES.md's checklist is your resume point. Read it, find the unchecked items, continue from the last screenshot number.
 
