@@ -1,6 +1,6 @@
 # Mobile App Exploration
 
-A pattern for systematically exploring any Android app using an LLM agent with physical device access — producing a complete map of every screen, every interaction, and every user flow.
+A pattern for systematically exploring any mobile app using an LLM agent with physical device access — producing a complete map of every screen, every interaction, and every user flow.
 
 This is an idea file. Share it with your LLM agent and explore together. The specifics will depend on your app, your device, and your goals.
 
@@ -117,16 +117,7 @@ This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/ll
 
 Supports **both iOS and Android** — real devices and simulators. The DEX fallback is Android-only (iOS uses WebDriverAgent which doesn't have this issue).
 
-### React Native / WebView apps
-
-Standard `uiautomator dump` fails on React Native apps because JS-driven animations fire accessibility events every ~100ms, preventing the idle state from resolving. This fork handles it automatically:
-
-1. Attempts `uiautomator dump` (3 tries)
-2. If it fails with "could not get idle state", falls back to a bundled DEX hierarchy dumper
-3. The DEX uses `UiAutomation.getRootInActiveWindow()` which returns the accessibility tree immediately without waiting for idle
-4. The DEX file is auto-pushed to the device on first use — zero configuration required
-
-This means apps built with React Native, Flutter, or any framework with continuous animations work out of the box. You don't need to know or care which framework the app uses — the MCP handles it transparently.
+Apps built with React Native, Flutter, or any framework with continuous animations work out of the box. The MCP detects when the standard approach fails and automatically falls back to an alternative method. No configuration required.
 
 ## Action batching
 
@@ -142,27 +133,15 @@ Once you know a flow — the screens, the coordinates, the transitions — you d
 - **Token/chain selection** — selecting a token may auto-open another selector or reset fields
 - **Keyboard appearance** — pushes all bottom-sheet buttons to different y-coordinates
 
-**Conditional batching.** The practical approach is hybrid: batch the predictable parts, insert a state check (UI dump) at transition points, then batch again.
+**Conditional batching.** Batch the predictable parts, insert a state check (UI dump) at transition points, then batch again.
 
-```
-Phase A (batch): navigate to screen, fill fields, dismiss keyboard
-Phase B (check): UI dump → verify expected state (button enabled? correct screen?)
-Phase C (batch): confirm, handle auth, complete flow
-```
+**Keyboard handling.** Never use BACK to dismiss a keyboard — it may navigate away. Tap an empty area instead.
 
-**Keyboard handling.** Never use BACK to dismiss a keyboard — if the keyboard is already down, BACK navigates away from the screen. Instead, tap an empty area of the screen. This is reliable regardless of keyboard state.
-
-**Biometric → Password flow.** Most apps show biometric auth first, with a password fallback. The flow is: Confirm tap → biometric prompt (FLAG_SECURE, black screenshot) → Cancel → password sheet appears → type password → Confirm. The biometric prompt takes 1–2 seconds to appear, and the password sheet coordinates differ from the main screen because of the bottom sheet offset.
-
-**Coordinates from ROUTES.md.** The route map from Phase 1 contains the raw material for batching. Each screenshot has a corresponding UI dump with exact element coordinates. A transition table mapping `screen + action → next screen` would make batching fully deterministic. This is a natural Phase 2 artifact.
+**Biometric → Password flow.** Most apps show biometric auth first, with a password fallback. The biometric prompt is FLAG_SECURE (black screenshot), so detect it via UI dump. Cancel it to reach the password input.
 
 ## Tips and tricks
 
-**Foldable devices** (Galaxy Z Fold, etc.) have dual displays. `screencap` without a display ID outputs garbage. Fix: `adb shell dumpsys SurfaceFlinger --display-id` to find IDs, then patch the MCP handler to add `-d <display_id>`. Restart the MCP server after patching — Node loads code at startup.
-
-**FLAG_SECURE screens** (biometric prompts, banking screens) capture as black. Use `capture_ui_dump` instead — it reads the accessibility tree regardless. Document what the dump reveals.
-
-**Scroll reliability** varies by device. `input_scroll` may be too gentle. Fallback: `adb shell input swipe 540 2000 540 800 500`. Adjust coordinates for your screen resolution.
+**FLAG_SECURE screens** (biometric prompts, banking screens) capture as black. Use the UI dump instead — it reads the accessibility tree regardless.
 
 **Session breaks** are inevitable — context limits, app crashes, device timeouts. ROUTES.md's checklist is your resume point. Read it, find the unchecked items, continue from the last screenshot number.
 
