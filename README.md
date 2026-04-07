@@ -88,7 +88,7 @@ Every screenshot gets a row. Key Elements is factual — what you see, not what 
 
 ## Setup
 
-You need ADB (Android Debug Bridge) and an MCP server that wraps it.
+You need a phone and an MCP server that lets the agent see and touch it.
 
 **On the phone:** Developer Mode on, USB Debugging on. Connect via USB.
 
@@ -101,17 +101,17 @@ adb devices
 # MCP server — add to your agent's MCP config
 {
   "mcpServers": {
-    "android-debug-bridge": {
+    "mobile": {
       "command": "npx",
-      "args": ["-y", "android-debug-bridge-mcp"]
+      "args": ["-y", "github:ForrestKim42/mobile-mcp#feat/llm-friendly-ui-analysis"]
     }
   }
 }
 ```
 
-Package: [android-debug-bridge-mcp](https://npmjs.com/package/android-debug-bridge-mcp) by TiagoDanin (MIT). Works with any MCP-compatible agent — Claude Code, Cursor, Windsurf, or anything that speaks MCP.
+This is a [patched fork](https://github.com/ForrestKim42/mobile-mcp/tree/feat/llm-friendly-ui-analysis) of [mobile-mcp](https://github.com/mobile-next/mobile-mcp) that adds LLM-optimized UI analysis — categorized elements (texts/buttons/inputs/scrollables) with center coordinates, password field detection, and element counts. Supports **both iOS and Android** — real devices and simulators.
 
-This gives the agent: `capture_screenshot`, `capture_ui_dump`, `input_tap`, `input_text`, `input_keyevent`, `input_scroll`, `open_app`. That's all you need.
+This gives the agent: `mobile_take_screenshot`, `mobile_list_elements_on_screen`, `mobile_click_on_screen_at_coordinates`, `mobile_type_keys`, `mobile_press_button`, `mobile_swipe_on_screen`, `mobile_launch_app`. That's all you need.
 
 ## Tips and tricks
 
