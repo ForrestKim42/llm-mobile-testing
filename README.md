@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/forrestkim42-llm-app-exploration-badge.png)](https://mseep.ai/app/forrestkim42-llm-app-exploration)
+
 # App Exploration
 
 A pattern for systematically exploring any app — mobile or desktop — using an LLM agent with device access. Produces a complete map of every screen, every interaction, and every user flow. Then uses that map to execute tasks efficiently.
